@@ -1,0 +1,25 @@
+[Unit]
+Description=Jarvis Telegram bot (Claude Code bridge)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=jarvis
+Group=jarvis
+WorkingDirectory=/home/jarvis/bot
+EnvironmentFile=/home/jarvis/bot/.env
+Environment=HOME=/home/jarvis
+Environment=PATH=/home/jarvis/.bun/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/jarvis/.bun/bin/bun run /home/jarvis/bot/index.ts
+Restart=on-failure
+RestartSec=5
+
+# Basic hardening. User=jarvis already confines writes to /home/jarvis.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=false
+
+[Install]
+WantedBy=multi-user.target
