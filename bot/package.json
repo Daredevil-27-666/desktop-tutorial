@@ -1,0 +1,11 @@
+{
+  "name": "jarvis-bot",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun run index.ts"
+  },
+  "dependencies": {
+    "grammy": "^1.30.0"
+  }
+}
