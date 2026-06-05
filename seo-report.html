@@ -242,6 +242,34 @@
       return path.length > 38 ? path.slice(0, 35) + "…" : path;
     };
 
+    const LOW_CTR = 3, MIN_IMPR = 10;
+    const isOpportunity = (qd) => qd.impressions >= MIN_IMPR && qd.ctr < LOW_CTR;
+
+    // ---- Opportunities table (rendered first so it never depends on charts) --
+    const opps = queries.filter(isOpportunity).sort((a, b) => b.impressions - a.impressions);
+    document.getElementById("opp-count").textContent = opps.length + " queries";
+    document.getElementById("oppBody").innerHTML = opps.map(q => `
+      <tr class="hover:bg-slate-50">
+        <td class="py-2 pr-4 font-medium text-slate-800">${q.q}</td>
+        <td class="py-2 px-4 text-right tabular-nums">${q.impressions}</td>
+        <td class="py-2 px-4 text-right tabular-nums">${q.clicks}</td>
+        <td class="py-2 px-4 text-right tabular-nums text-rose-600">${q.ctr}%</td>
+        <td class="py-2 pl-4 text-right tabular-nums">${q.position}</td>
+      </tr>
+    `).join("");
+
+    // If the Chart.js CDN was blocked/offline, tell the user instead of failing silently.
+    if (typeof Chart === "undefined") {
+      const banner = document.createElement("div");
+      banner.className = "mb-8 rounded-2xl bg-amber-50 p-4 text-sm text-amber-800 ring-1 ring-amber-200";
+      banner.textContent = "Charts could not load — the Chart.js CDN was unreachable. " +
+        "Connect to the internet and refresh; the KPI cards and the opportunities table below still work offline.";
+      document.querySelector("header").after(banner);
+    } else {
+      renderCharts();
+    }
+
+    function renderCharts() {
     // ---- Top pages bar chart (top 10 by clicks) -----------------------------
     const topPages = [...pages].sort((a, b) => b.clicks - a.clicks).slice(0, 10);
     new Chart(document.getElementById("pagesChart"), {
@@ -278,9 +306,6 @@
     });
 
     // ---- Query scatter: impressions (x) vs CTR (y) --------------------------
-    const LOW_CTR = 3, MIN_IMPR = 10;
-    const isOpportunity = (qd) => qd.impressions >= MIN_IMPR && qd.ctr < LOW_CTR;
-
     new Chart(document.getElementById("queryChart"), {
       type: "scatter",
       data: {
@@ -361,20 +386,7 @@
         },
       },
     });
-
-    // ---- Opportunities table ------------------------------------------------
-    const opps = queries.filter(isOpportunity).sort((a, b) => b.impressions - a.impressions);
-    document.getElementById("opp-count").textContent = opps.length + " queries";
-    const body = document.getElementById("oppBody");
-    body.innerHTML = opps.map(q => `
-      <tr class="hover:bg-slate-50">
-        <td class="py-2 pr-4 font-medium text-slate-800">${q.q}</td>
-        <td class="py-2 px-4 text-right tabular-nums">${q.impressions}</td>
-        <td class="py-2 px-4 text-right tabular-nums">${q.clicks}</td>
-        <td class="py-2 px-4 text-right tabular-nums text-rose-600">${q.ctr}%</td>
-        <td class="py-2 pl-4 text-right tabular-nums">${q.position}</td>
-      </tr>
-    `).join("");
+    } // end renderCharts()
   </script>
 </body>
 </html>
