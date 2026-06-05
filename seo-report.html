@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SEO Performance Dashboard — Fred's Tattoo Studio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    /* Smooth scrollbars for the wide query table on small screens */
+    .scroll-shadow::-webkit-scrollbar { height: 8px; }
+    .scroll-shadow::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- Header -->
+    <header class="mb-8">
+      <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+        <div>
+          <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">
+            SEO Performance Dashboard
+          </h1>
+          <p class="mt-1 text-slate-500">
+            Google Search Console &middot; Web search &middot; Last 28 days
+            <span class="text-slate-400">(2026-05-05 → 2026-06-01)</span>
+          </p>
+        </div>
+        <span class="inline-flex items-center self-start rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700 ring-1 ring-inset ring-indigo-200">
+          fredstattoostudio.com
+        </span>
+      </div>
+    </header>
+
+    <!-- KPI cards -->
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <p class="text-sm font-medium text-slate-500">Total Clicks</p>
+        <p class="mt-2 text-3xl font-bold text-slate-900" id="kpi-clicks">—</p>
+      </div>
+      <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <p class="text-sm font-medium text-slate-500">Total Impressions</p>
+        <p class="mt-2 text-3xl font-bold text-slate-900" id="kpi-impr">—</p>
+      </div>
+      <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <p class="text-sm font-medium text-slate-500">Average CTR</p>
+        <p class="mt-2 text-3xl font-bold text-slate-900" id="kpi-ctr">—</p>
+      </div>
+      <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <p class="text-sm font-medium text-slate-500">Avg. Position</p>
+        <p class="mt-2 text-3xl font-bold text-slate-900" id="kpi-pos">—</p>
+      </div>
+    </section>
+
+    <!-- Charts -->
+    <section class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
+      <!-- Top pages bar chart -->
+      <div class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <h2 class="text-lg font-semibold text-slate-900">Top Landing Pages by Clicks</h2>
+        <p class="text-sm text-slate-500 mb-4">Which pages are actually driving traffic.</p>
+        <div class="relative h-80">
+          <canvas id="pagesChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Query scatter -->
+      <div class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <h2 class="text-lg font-semibold text-slate-900">Query Performance: Impressions vs. CTR</h2>
+        <p class="text-sm text-slate-500 mb-4">
+          <span class="inline-block w-3 h-3 rounded-full bg-rose-500 align-middle"></span>
+          Red = high-impression opportunities with CTR &lt; 3%.
+        </p>
+        <div class="relative h-80">
+          <canvas id="queryChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Clicks/Impressions over time -->
+    <section class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 mb-8">
+      <h2 class="text-lg font-semibold text-slate-900">Daily Trend</h2>
+      <p class="text-sm text-slate-500 mb-4">Clicks and impressions over the reporting window.</p>
+      <div class="relative h-72">
+        <canvas id="trendChart"></canvas>
+      </div>
+    </section>
+
+    <!-- Opportunities table -->
+    <section class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 mb-8">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-lg font-semibold text-slate-900">High-Impression, Low-CTR Opportunities</h2>
+          <p class="text-sm text-slate-500">Queries with ≥ 10 impressions and CTR below 3% — you rank, but nobody clicks.</p>
+        </div>
+        <span class="hidden sm:inline-flex items-center rounded-full bg-rose-50 px-3 py-1 text-sm font-medium text-rose-700 ring-1 ring-inset ring-rose-200" id="opp-count">—</span>
+      </div>
+      <div class="overflow-x-auto scroll-shadow">
+        <table class="min-w-full divide-y divide-slate-200 text-sm">
+          <thead>
+            <tr class="text-left text-slate-500">
+              <th class="py-2 pr-4 font-medium">Query</th>
+              <th class="py-2 px-4 font-medium text-right">Impressions</th>
+              <th class="py-2 px-4 font-medium text-right">Clicks</th>
+              <th class="py-2 px-4 font-medium text-right">CTR</th>
+              <th class="py-2 pl-4 font-medium text-right">Position</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100" id="oppBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer class="text-center text-xs text-slate-400 py-4">
+      Generated locally from GSC exports &middot; Open this file directly in your browser.
+    </footer>
+  </div>
+
+  <script>
+    // ---- Data (parsed from the GSC CSV exports) ----------------------------
+    const pages = [
+      { url: "https://www.fredstattoostudio.com/", clicks: 18, impressions: 906, ctr: 1.99, position: 11.42 },
+      { url: "https://www.fredstattoostudio.com/best-tattoo-artist-in-bangalore-with-price/polynesian-tribal-tattoos-...koramangala", clicks: 4, impressions: 37, ctr: 10.81, position: 7.46 },
+      { url: "https://www.fredstattoostudio.com/contact", clicks: 3, impressions: 129, ctr: 2.33, position: 9.09 },
+      { url: "https://www.fredstattoostudio.com/blogs/the-psychology-of-tattoos-what-your-ink-says-about-you", clicks: 0, impressions: 300, ctr: 0, position: 13.11 },
+      { url: "https://www.fredstattoostudio.com/blogs/history-behind-japanese-tattoo-art", clicks: 0, impressions: 194, ctr: 0, position: 21.98 },
+      { url: "https://www.fredstattoostudio.com/blogs/inked-stories-the-fascinating-meanings-behind-popular-tattoo-designs", clicks: 0, impressions: 30, ctr: 0, position: 16.3 },
+      { url: "https://www.fredstattoostudio.com/blogs/the-ultimate-tattoo-aftercare-guide-healing-tips-for-flawless-ink", clicks: 0, impressions: 12, ctr: 0, position: 15.33 },
+      { url: "https://www.fredstattoostudio.com/blogs", clicks: 0, impressions: 5, ctr: 0, position: 14.8 },
+      { url: "https://fredstattoostudio.com/", clicks: 0, impressions: 3, ctr: 0, position: 8.33 },
+    ];
+
+    const queries = [
+      { q: "fred's tattoo studio", clicks: 16, impressions: 79, ctr: 20.25, position: 1.59 },
+      { q: "best tattoo studio in koramangala", clicks: 1, impressions: 25, ctr: 4, position: 7.56 },
+      { q: "tattoo near me", clicks: 1, impressions: 3, ctr: 33.33, position: 8 },
+      { q: "psychology of tattoo placement", clicks: 0, impressions: 134, ctr: 0, position: 11.89 },
+      { q: "koramangala tattoo studio", clicks: 0, impressions: 91, ctr: 0, position: 7.27 },
+      { q: "tattoo studio koramangala", clicks: 0, impressions: 53, ctr: 0, position: 7.74 },
+      { q: "tattoo studio in koramangala", clicks: 0, impressions: 34, ctr: 0, position: 12.79 },
+      { q: "tattoo shops koramangala", clicks: 0, impressions: 24, ctr: 0, position: 9.62 },
+      { q: "best tattoo artist in bangalore", clicks: 0, impressions: 21, ctr: 0, position: 63.24 },
+      { q: "tattoo in koramangala", clicks: 0, impressions: 19, ctr: 0, position: 13.11 },
+      { q: "tattoo shop in koramangala", clicks: 0, impressions: 18, ctr: 0, position: 7.61 },
+      { q: "tattoo shops near me", clicks: 0, impressions: 16, ctr: 0, position: 13.5 },
+      { q: "best tattoo studio in bangalore", clicks: 0, impressions: 14, ctr: 0, position: 25.14 },
+      { q: "fred's tattoo studio reviews", clicks: 0, impressions: 12, ctr: 0, position: 2.58 },
+      { q: "fine line tattoo bangalore", clicks: 0, impressions: 11, ctr: 0, position: 10.36 },
+      { q: "tattoo studio in koramangala bangalore", clicks: 0, impressions: 10, ctr: 0, position: 13.3 },
+      { q: "tattoo shop koramangala", clicks: 0, impressions: 9, ctr: 0, position: 7.78 },
+      { q: "tattoo koramangala", clicks: 0, impressions: 9, ctr: 0, position: 8.67 },
+      { q: "best tattoo shop in bangalore", clicks: 0, impressions: 9, ctr: 0, position: 52.44 },
+      { q: "tattoo shops in koramangala", clicks: 0, impressions: 6, ctr: 0, position: 8.5 },
+      { q: "tattoo shop near me", clicks: 0, impressions: 6, ctr: 0, position: 22.67 },
+      { q: "tatoo in banaglore", clicks: 0, impressions: 6, ctr: 0, position: 61 },
+      { q: "fred tattoo", clicks: 0, impressions: 5, ctr: 0, position: 6.6 },
+      { q: "psychology of tattoos", clicks: 0, impressions: 5, ctr: 0, position: 19.6 },
+      { q: "tattoo psychology", clicks: 0, impressions: 5, ctr: 0, position: 25 },
+      { q: "tattoo studio in bangalore", clicks: 0, impressions: 5, ctr: 0, position: 30.6 },
+      { q: "freds", clicks: 0, impressions: 4, ctr: 0, position: 1 },
+      { q: "history of tattoos in japan", clicks: 0, impressions: 4, ctr: 0, position: 25 },
+      { q: "japanese tattoo history", clicks: 0, impressions: 4, ctr: 0, position: 26.5 },
+      { q: "best tattoo parlour in bangalore", clicks: 0, impressions: 4, ctr: 0, position: 57.5 },
+      { q: "tattoo studio near me", clicks: 0, impressions: 3, ctr: 0, position: 16.33 },
+      { q: "bangalore tattoo shop", clicks: 0, impressions: 3, ctr: 0, position: 17.67 },
+      { q: "what tattoos say about a person", clicks: 0, impressions: 3, ctr: 0, position: 30.67 },
+      { q: "history of tattooing in japan", clicks: 0, impressions: 3, ctr: 0, position: 32.67 },
+      { q: "tattoo studios in bangalore", clicks: 0, impressions: 3, ctr: 0, position: 57.67 },
+      { q: "freds tattoo studio", clicks: 0, impressions: 2, ctr: 0, position: 1 },
+      { q: "tattoo shops", clicks: 0, impressions: 2, ctr: 0, position: 3 },
+      { q: "bangalore best tattoo shop", clicks: 0, impressions: 2, ctr: 0, position: 9.5 },
+      { q: "tattoo shop in bangalore", clicks: 0, impressions: 2, ctr: 0, position: 12 },
+      { q: "tattoos and personality", clicks: 0, impressions: 2, ctr: 0, position: 19 },
+      { q: "best tattoo studio bangalore", clicks: 0, impressions: 2, ctr: 0, position: 22 },
+      { q: "tattoo art meaning", clicks: 0, impressions: 2, ctr: 0, position: 22 },
+      { q: "psychology behind tattoos", clicks: 0, impressions: 2, ctr: 0, position: 24.5 },
+      { q: "japanese tattoos history", clicks: 0, impressions: 2, ctr: 0, position: 25 },
+      { q: "history of japanese tattooing", clicks: 0, impressions: 2, ctr: 0, position: 26 },
+      { q: "tattoo rates in bangalore", clicks: 0, impressions: 2, ctr: 0, position: 29 },
+      { q: "tattoo studio bangalore", clicks: 0, impressions: 2, ctr: 0, position: 37.5 },
+      { q: "best tattoo studio in hebbal", clicks: 0, impressions: 2, ctr: 0, position: 50 },
+      { q: "wings tattoo studio", clicks: 0, impressions: 2, ctr: 0, position: 53 },
+      { q: "tattoo studios bangalore", clicks: 0, impressions: 2, ctr: 0, position: 83 },
+      { q: "tatto shops near me", clicks: 0, impressions: 1, ctr: 0, position: 1 },
+      { q: "tattoo shop", clicks: 0, impressions: 1, ctr: 0, position: 1 },
+      { q: "top rated tattoo shops near me", clicks: 0, impressions: 1, ctr: 0, position: 1 },
+      { q: "fred's", clicks: 0, impressions: 1, ctr: 0, position: 2 },
+      { q: "inked", clicks: 0, impressions: 1, ctr: 0, position: 3 },
+      { q: "tattoo store near me", clicks: 0, impressions: 1, ctr: 0, position: 4 },
+      { q: "tattoo open now", clicks: 0, impressions: 1, ctr: 0, position: 6 },
+      { q: "tattoo places bangalore", clicks: 0, impressions: 1, ctr: 0, position: 6 },
+      { q: "free tattoo studio", clicks: 0, impressions: 1, ctr: 0, position: 8 },
+      { q: "hand tattoo", clicks: 0, impressions: 1, ctr: 0, position: 8 },
+      { q: "tattoo store", clicks: 0, impressions: 1, ctr: 0, position: 8 },
+      { q: "tattoo studios near me", clicks: 0, impressions: 1, ctr: 0, position: 8 },
+      { q: "good tattoo studio near me", clicks: 0, impressions: 1, ctr: 0, position: 9 },
+      { q: "mandala tattoo studio", clicks: 0, impressions: 1, ctr: 0, position: 9 },
+      { q: "best tattoo place in bangalore", clicks: 0, impressions: 1, ctr: 0, position: 10 },
+      { q: "good tattoo artist in bangalore", clicks: 0, impressions: 1, ctr: 0, position: 11 },
+      { q: "good tattoo places in bangalore", clicks: 0, impressions: 1, ctr: 0, position: 12 },
+      { q: "what do tattoos say about a person psychology", clicks: 0, impressions: 1, ctr: 0, position: 13 },
+      { q: "psychological meaning of tattoos", clicks: 0, impressions: 1, ctr: 0, position: 17 },
+      { q: "best tattoo artist in bangalore near me", clicks: 0, impressions: 1, ctr: 0, position: 20 },
+      { q: "tattoo best shop near me", clicks: 0, impressions: 1, ctr: 0, position: 20 },
+      { q: "the psychology of tattoos", clicks: 0, impressions: 1, ctr: 0, position: 25 },
+      { q: "what do tattoos say about a person", clicks: 0, impressions: 1, ctr: 0, position: 30 },
+      { q: "tattoo characteristics", clicks: 0, impressions: 1, ctr: 0, position: 31 },
+      { q: "history of japanese tattoos", clicks: 0, impressions: 1, ctr: 0, position: 33 },
+      { q: "japan tattoo history", clicks: 0, impressions: 1, ctr: 0, position: 35 },
+      { q: "history of japanese tattoo", clicks: 0, impressions: 1, ctr: 0, position: 37 },
+      { q: "tattoo cost in bangalore", clicks: 0, impressions: 1, ctr: 0, position: 45 },
+      { q: "tattoo shops in bangalore with price", clicks: 0, impressions: 1, ctr: 0, position: 48 },
+      { q: "tattoo artist in bangalore", clicks: 0, impressions: 1, ctr: 0, position: 64 },
+      { q: "tattoo parlour bangalore", clicks: 0, impressions: 1, ctr: 0, position: 64 },
+      { q: "best tattoo studio in banglore", clicks: 0, impressions: 1, ctr: 0, position: 85 },
+    ];
+
+    const trend = [
+      ["2026-05-05",1,73],["2026-05-06",0,64],["2026-05-07",1,65],["2026-05-08",0,91],
+      ["2026-05-09",0,60],["2026-05-10",0,73],["2026-05-11",3,69],["2026-05-12",0,47],
+      ["2026-05-13",1,64],["2026-05-14",1,58],["2026-05-15",0,52],["2026-05-16",2,59],
+      ["2026-05-17",2,56],["2026-05-18",3,66],["2026-05-19",1,39],["2026-05-20",0,55],
+      ["2026-05-21",0,43],["2026-05-22",0,57],["2026-05-23",0,37],["2026-05-24",0,46],
+      ["2026-05-25",0,37],["2026-05-26",0,38],["2026-05-27",1,31],["2026-05-28",1,38],
+      ["2026-05-29",1,31],["2026-05-30",1,49],["2026-05-31",3,25],["2026-06-01",0,16],
+    ];
+
+    // ---- KPIs ---------------------------------------------------------------
+    const totalClicks = pages.reduce((s, p) => s + p.clicks, 0);
+    const totalImpr = pages.reduce((s, p) => s + p.impressions, 0);
+    const avgCtr = totalImpr ? (totalClicks / totalImpr) * 100 : 0;
+    const avgPos = pages.reduce((s, p) => s + p.position * p.impressions, 0) / totalImpr;
+
+    document.getElementById("kpi-clicks").textContent = totalClicks.toLocaleString();
+    document.getElementById("kpi-impr").textContent = totalImpr.toLocaleString();
+    document.getElementById("kpi-ctr").textContent = avgCtr.toFixed(2) + "%";
+    document.getElementById("kpi-pos").textContent = avgPos.toFixed(1);
+
+    // Shorten a long URL into a readable label
+    const shortLabel = (url) => {
+      const path = url.replace(/^https?:\/\/(www\.)?fredstattoostudio\.com/, "") || "/";
+      return path.length > 38 ? path.slice(0, 35) + "…" : path;
+    };
+
+    // ---- Top pages bar chart (top 10 by clicks) -----------------------------
+    const topPages = [...pages].sort((a, b) => b.clicks - a.clicks).slice(0, 10);
+    new Chart(document.getElementById("pagesChart"), {
+      type: "bar",
+      data: {
+        labels: topPages.map(p => shortLabel(p.url)),
+        datasets: [{
+          label: "Clicks",
+          data: topPages.map(p => p.clicks),
+          backgroundColor: "#6366f1",
+          borderRadius: 6,
+        }],
+      },
+      options: {
+        indexAxis: "y",
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              afterLabel: (ctx) => {
+                const p = topPages[ctx.dataIndex];
+                return `Impr: ${p.impressions} · CTR: ${p.ctr}% · Pos: ${p.position}`;
+              },
+            },
+          },
+        },
+        scales: {
+          x: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: "#f1f5f9" } },
+          y: { grid: { display: false } },
+        },
+      },
+    });
+
+    // ---- Query scatter: impressions (x) vs CTR (y) --------------------------
+    const LOW_CTR = 3, MIN_IMPR = 10;
+    const isOpportunity = (qd) => qd.impressions >= MIN_IMPR && qd.ctr < LOW_CTR;
+
+    new Chart(document.getElementById("queryChart"), {
+      type: "scatter",
+      data: {
+        datasets: [
+          {
+            label: "Opportunity (≥10 impr, <3% CTR)",
+            data: queries.filter(isOpportunity).map(q => ({ x: q.impressions, y: q.ctr, q: q.q, pos: q.position })),
+            backgroundColor: "#f43f5e",
+            pointRadius: 6,
+            pointHoverRadius: 8,
+          },
+          {
+            label: "Other queries",
+            data: queries.filter(q => !isOpportunity(q)).map(q => ({ x: q.impressions, y: q.ctr, q: q.q, pos: q.position })),
+            backgroundColor: "rgba(99,102,241,0.55)",
+            pointRadius: 4,
+            pointHoverRadius: 6,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: "bottom", labels: { boxWidth: 12, usePointStyle: true } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const d = ctx.raw;
+                return `${d.q} — ${d.x} impr, ${d.y}% CTR, pos ${d.pos}`;
+              },
+            },
+          },
+        },
+        scales: {
+          x: { title: { display: true, text: "Impressions" }, beginAtZero: true, grid: { color: "#f1f5f9" } },
+          y: { title: { display: true, text: "CTR (%)" }, beginAtZero: true, grid: { color: "#f1f5f9" } },
+        },
+      },
+    });
+
+    // ---- Daily trend (dual axis) -------------------------------------------
+    new Chart(document.getElementById("trendChart"), {
+      type: "line",
+      data: {
+        labels: trend.map(t => t[0].slice(5)),
+        datasets: [
+          {
+            label: "Impressions",
+            data: trend.map(t => t[2]),
+            borderColor: "#94a3b8",
+            backgroundColor: "rgba(148,163,184,0.15)",
+            fill: true,
+            tension: 0.3,
+            yAxisID: "yImpr",
+            pointRadius: 0,
+          },
+          {
+            label: "Clicks",
+            data: trend.map(t => t[1]),
+            borderColor: "#6366f1",
+            backgroundColor: "#6366f1",
+            tension: 0.3,
+            yAxisID: "yClicks",
+            pointRadius: 3,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: { legend: { position: "bottom", labels: { boxWidth: 12, usePointStyle: true } } },
+        scales: {
+          x: { grid: { display: false } },
+          yClicks: { type: "linear", position: "left", beginAtZero: true, title: { display: true, text: "Clicks" }, ticks: { precision: 0 }, grid: { color: "#f1f5f9" } },
+          yImpr: { type: "linear", position: "right", beginAtZero: true, title: { display: true, text: "Impressions" }, grid: { display: false } },
+        },
+      },
+    });
+
+    // ---- Opportunities table ------------------------------------------------
+    const opps = queries.filter(isOpportunity).sort((a, b) => b.impressions - a.impressions);
+    document.getElementById("opp-count").textContent = opps.length + " queries";
+    const body = document.getElementById("oppBody");
+    body.innerHTML = opps.map(q => `
+      <tr class="hover:bg-slate-50">
+        <td class="py-2 pr-4 font-medium text-slate-800">${q.q}</td>
+        <td class="py-2 px-4 text-right tabular-nums">${q.impressions}</td>
+        <td class="py-2 px-4 text-right tabular-nums">${q.clicks}</td>
+        <td class="py-2 px-4 text-right tabular-nums text-rose-600">${q.ctr}%</td>
+        <td class="py-2 pl-4 text-right tabular-nums">${q.position}</td>
+      </tr>
+    `).join("");
+  </script>
+</body>
+</html>
